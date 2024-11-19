@@ -150,7 +150,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: test-results
-          path: ./TestResults/test-results.trx
+          path: '**/TestResults/test-results.trx'
 
       # Step 12: Upload Code Coverage
       - name: Upload Code Coverage
