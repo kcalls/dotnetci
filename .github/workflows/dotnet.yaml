@@ -1,0 +1,49 @@
+name: .NET Tests with Coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Setup .NET environment
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.422'
+
+      # Step 3: Restore dependencies
+      - name: Restore Dependencies
+        run: dotnet restore HelloWorldSolution.sln
+
+      # Step 4: Run tests and collect coverage
+      - name: Run Tests with Coverage
+        run: |
+          dotnet test HelloWorldSolution.sln --collect:"XPlat Code Coverage"
+          find .
+
+      # Step 5: Generate Coverage Report (HTML)
+      # - name: Generate Coverage Report
+      #   run: |
+      #     dotnet tool install --global dotnet-reportgenerator-globaltool
+      #     reportgenerator -reports:**/TestResults/**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html
+
+      # Step 6: Upload Coverage Report as Artifact
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-report
+          path: |
+            **/TestResults/**/coverage.cobertura.xml
+
