@@ -9,6 +9,14 @@ on:
   #     - main
   workflow_dispatch:
     inputs:
+      dotnetcore-version:
+        description: 'dotnet core version to be installed'
+        required: false
+        default: '6.0.422'
+        type: choice
+        options:
+          - 6.0.422
+          - 8.0.300
       solution_path:
         description: 'Path to the solution (.sln) file'
         required: false
@@ -57,7 +65,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '6.0.422'
+          dotnet-version: ${{ inputs.dotnetcore-version }}
       
       # Step 3a: Validate Solution File
       - name: Validate Solution File
@@ -65,7 +73,10 @@ jobs:
         run: |
           if [ ! -f "${{ inputs.solution_path }}" ]; then
             echo "Error: Solution file not found at ${{ inputs.solution_path }}"
-            exit 1
+            echo "sln_exists=false" >> $GITHUB_ENV
+          else
+            echo "sln_exists=true" >> $GITHUB_ENV
+            echo "solution_file=$(ls *.sln | head -n 1)"
           fi
 
       # Step 3b: Validate Runtime
@@ -87,23 +98,54 @@ jobs:
           fi
 
       # Step 5: Restore dependencies
-      - name: Restore Dependencies
+      - name: Restore Dependencies for Solution
+        if: env.sln_exists == 'true' 
         run: dotnet restore ${{ inputs.solution_path }}
+
+      - name: Restore Dependencies for Projects Individually
+        if: env.sln_exists == 'false' 
+        run: |
+          for project in $(find . -name '*.csproj'); do
+            echo "Restoring dependencies for $project..."
+            dotnet restore "$project"
+          done
 
       # Step 6: Build Solution
       - name: Build Solution
+        if: env.sln_exists == 'true'
         run: dotnet build ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} --no-restore
 
+      - name: Build Projects Individually
+        if: env.sln_exists == 'false'
+        run: |
+          for project in $(find . -name '*.csproj'); do
+            echo "Building $project..."
+            dotnet build "$project" -c ${{ inputs.build_configuration }} 
+          done
+
       # Step 7: Run Tests and Collect Code Coverage
-      - name: Run Tests with Coverage
+      - name: Run Tests with Coverage for Solution
+        if: env.sln_exists == 'true'
         run: |
           dotnet test ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} \
             --logger "trx;LogFileName=test-results.trx" \
             --collect:"XPlat Code Coverage"
 
+      - name: Run Tests with Coverage for Projects Individually
+        if: env.sln_exists == 'false'
+        run: |
+          for project in $(find . -name '*.Tests.csproj'); do
+              # if grep -q "<IsTestProject>true</IsTestProject>" "$project"; then
+            echo "Running tests for $project..."
+            dotnet test "$project" -c ${{ inputs.build_configuration }} \
+              --logger "trx;LogFileName=$(basename $project .csproj)-test-results.trx" \
+              --collect:"XPlat Code Coverage"
+              # fi
+          done
+
       # Step 8: Package for Applications
-      - name: Package Application
-        if: steps.detect-project.outputs.project_type == 'app'
+      - name: Package Application for solution
+        if: ${{ steps.detect-project.outputs.project_type == 'app' && env.sln_exists == 'true' }}
         run: |
           case ${{ inputs.packaging_type }} in
             framework-dependent)
@@ -119,9 +161,28 @@ jobs:
           esac
         shell: bash
 
+      - name: Package Applications for Projects Individually
+        if: ${{ steps.detect-project.outputs.project_type == 'app' && env.sln_exists == 'false' }}
+        run: |
+          for project in $(find . -name '*.csproj'); do
+            echo "Packaging application $project..."
+            case ${{ inputs.packaging_type }} in
+              framework-dependent)
+                dotnet publish "$project" -c ${{ inputs.build_configuration }} -o ./publish/$(basename "$project" .csproj)
+                ;;
+              self-contained)
+                dotnet publish "$project" -c ${{ inputs.build_configuration }} --self-contained -r ${{ inputs.runtime }} -o ./publish/$(basename "$project" .csproj)
+                ;;
+              zip)
+                dotnet publish "$project" -c ${{ inputs.build_configuration }} -o ./publish/$(basename "$project" .csproj)
+                zip -r $(basename "$project" .csproj)-package.zip ./publish/$(basename "$project" .csproj)
+                ;;
+            esac
+          done
+
       # Step 9: Package for Libraries
-      - name: Package Library
-        if: steps.detect-project.outputs.project_type == 'library'
+      - name: Package Library for Solution
+        if: ${{ steps.detect-project.outputs.project_type == 'library' && env.sln_exists == 'true' }}
         run: |
           case ${{ inputs.packaging_type }} in
             nupkg)
@@ -134,30 +195,61 @@ jobs:
           esac
         shell: bash
 
+      - name: Package Libraries for Projects Individually
+        if: ${{ steps.detect-project.outputs.project_type == 'library' && env.sln_exists == 'false' }}
+        run: |
+          for project in $(find . -name '*.csproj'); do
+            echo "Packaging library $project..."
+            case ${{ inputs.packaging_type }} in
+              nupkg)
+                dotnet pack "$project" -c ${{ inputs.build_configuration }} --no-build
+                ;;
+              zip)
+                dotnet pack "$project" -c ${{ inputs.build_configuration }} --no-build
+                zip -r $(basename "$project" .csproj)-library.zip ./bin/${{ inputs.build_configuration }}
+                ;;
+            esac
+          done
+
       # Step 10: Upload Build Artifacts
+      # - name: Upload Build Artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: build-artifacts
+      #     path: |
+      #       publish/
+      #       app-package.zip
+      #       library-package.zip
+      #       ./bin/${{ inputs.build_configuration }}/*.nupkg
+
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: build-artifacts
           path: |
-            publish/
-            app-package.zip
-            library-package.zip
+            ./publish/
+            ./*.zip
             ./bin/${{ inputs.build_configuration }}/*.nupkg
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p artifacts/code-coverage artifacts/test-results
+          find . -name '*.trx' -exec cp {} artifacts/test-results/ \;
+          find . -name 'coverage.cobertura.xml' -exec cp {} artifacts/code-coverage/ \;
 
       # Step 11: Upload Test Results
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
         with:
           name: test-results
-          path: '**/TestResults/test-results.trx'
+          path: artifacts/test-results/
 
       # Step 12: Upload Code Coverage
       - name: Upload Code Coverage
         uses: actions/upload-artifact@v3
         with:
           name: code-coverage
-          path: '**/coverage.cobertura.xml'
+          path: artifacts/code-coverage/
 
       # Step 5: Generate Coverage Report (HTML)
       # - name: Generate Coverage Report
