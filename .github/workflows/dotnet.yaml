@@ -1,21 +1,21 @@
 name: .NET Tests with Coverage
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
   workflow_dispatch:
     inputs:
       solution_path:
         description: 'Path to the solution (.sln) file'
-        required: true
+        required: false
         default: 'HelloWorldSolution.sln'
       build_configuration:
         description: 'Build configuration'
-        required: true
+        required: false
         default: 'Release'
         type: choice
         options:
@@ -31,7 +31,7 @@ on:
           - osx-x64
       packaging_type:
         description: 'Packaging type for the application or library'
-        required: true
+        required: false
         default: 'framework-dependent'
         type: choice
         options:
