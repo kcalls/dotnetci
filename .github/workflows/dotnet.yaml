@@ -7,6 +7,42 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      solution_path:
+        description: 'Path to the solution (.sln) file'
+        required: true
+        default: 'HelloWorldSolution.sln'
+      build_configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Debug
+          - Release
+      runtime:
+        description: 'Runtime Identifier for self-contained deployment'
+        required: false
+        type: choice
+        options:
+          - linux-x64
+          - win-x64
+          - osx-x64
+      packaging_type:
+        description: 'Packaging type for the application or library'
+        required: true
+        default: 'framework-dependent'
+        type: choice
+        options:
+          - framework-dependent
+          - self-contained
+          - nupkg
+          - zip
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build-and-test:
@@ -22,16 +58,106 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '6.0.422'
+      
+      # Step 3a: Validate Solution File
+      - name: Validate Solution File
+        id: validate-solution
+        run: |
+          if [ ! -f "${{ inputs.solution_path }}" ]; then
+            echo "Error: Solution file not found at ${{ inputs.solution_path }}"
+            exit 1
+          fi
 
-      # Step 3: Restore dependencies
+      # Step 3b: Validate Runtime
+      - name: Validate Runtime
+        if: ${{ inputs.packaging_type == 'self-contained' && !contains('linux-x64 win-x64 osx-x64', inputs.runtime) }}
+        run: |
+          echo "Invalid runtime specified for self-contained deployment: ${{ inputs.runtime }}"
+          exit 1
+        
+
+      # Step 4: Detect Project Type
+      - name: Detect Project Type
+        id: detect-project
+        run: |
+          if grep -q "<OutputType>Exe</OutputType>" **/*.csproj; then
+            echo "project_type=app" >> $GITHUB_OUTPUT
+          else
+            echo "project_type=library" >> $GITHUB_OUTPUT
+          fi
+
+      # Step 5: Restore dependencies
       - name: Restore Dependencies
-        run: dotnet restore HelloWorldSolution.sln
+        run: dotnet restore ${{ inputs.solution_path }}
 
-      # Step 4: Run tests and collect coverage
+      # Step 6: Build Solution
+      - name: Build Solution
+        run: dotnet build ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} --no-restore
+
+      # Step 7: Run Tests and Collect Code Coverage
       - name: Run Tests with Coverage
         run: |
-          dotnet test HelloWorldSolution.sln --collect:"XPlat Code Coverage"
-          find .
+          dotnet test ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage"
+
+      # Step 8: Package for Applications
+      - name: Package Application
+        if: steps.detect-project.outputs.project_type == 'app'
+        run: |
+          case ${{ inputs.packaging_type }} in
+            framework-dependent)
+              dotnet publish ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} -o publish
+              ;;
+            self-contained)
+              dotnet publish ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} --self-contained -r ${{ inputs.runtime }} -o publish
+              ;;
+            zip)
+              dotnet publish ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} -o publish
+              zip -r app-package.zip publish
+              ;;
+          esac
+        shell: bash
+
+      # Step 9: Package for Libraries
+      - name: Package Library
+        if: steps.detect-project.outputs.project_type == 'library'
+        run: |
+          case ${{ inputs.packaging_type }} in
+            nupkg)
+              dotnet pack ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} --no-build
+              ;;
+            zip)
+              dotnet pack ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} --no-build
+              zip -r library-package.zip ./bin/${{ inputs.build_configuration }}
+              ;;
+          esac
+        shell: bash
+
+      # Step 10: Upload Build Artifacts
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            publish/
+            app-package.zip
+            library-package.zip
+            ./bin/${{ inputs.build_configuration }}/*.nupkg
+
+      # Step 11: Upload Test Results
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: ./TestResults/test-results.trx
+
+      # Step 12: Upload Code Coverage
+      - name: Upload Code Coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage
+          path: '**/coverage.cobertura.xml'
 
       # Step 5: Generate Coverage Report (HTML)
       # - name: Generate Coverage Report
@@ -40,10 +166,10 @@ jobs:
       #     reportgenerator -reports:**/TestResults/**/coverage.cobertura.xml -targetdir:coverage-report -reporttypes:Html
 
       # Step 6: Upload Coverage Report as Artifact
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: code-coverage-report
-          path: |
-            **/TestResults/**/coverage.cobertura.xml
+      # - name: Upload Coverage Report
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: code-coverage-report
+      #     path: |
+      #       **/TestResults/**/coverage.cobertura.xml
 
