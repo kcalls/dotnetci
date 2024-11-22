@@ -128,8 +128,10 @@ jobs:
         if: env.sln_exists == 'true'
         run: |
           dotnet test ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} \
-            --logger "trx;LogFileName=test-results.trx" \
-            --collect:"XPlat Code Coverage"
+          --collect:"XPlat Code Coverage" \
+          /p:CoverletOutput=TestResults/coverage.opencover.xml \
+          /p:CoverletOutputFormat=opencover \
+          --logger "trx;LogFileName=TestResults/test_results.trx"
 
       - name: Run Tests with Coverage for Projects Individually
         if: env.sln_exists == 'false'
@@ -231,25 +233,25 @@ jobs:
             ./*.zip
             ./bin/${{ inputs.build_configuration }}/*.nupkg
 
-      - name: Prepare Artifacts
-        run: |
-          mkdir -p artifacts/code-coverage artifacts/test-results
-          find . -name '*.trx' -exec cp {} artifacts/test-results/ \;
-          find . -name 'coverage.cobertura.xml' -exec cp {} artifacts/code-coverage/ \;
+      # - name: Prepare Artifacts
+      #   run: |
+      #     mkdir -p artifacts/code-coverage artifacts/test-results
+      #     find . -name '*.trx' -exec cp {} artifacts/test-results/ \;
+      #     find . -name 'coverage.cobertura.xml' -exec cp {} artifacts/code-coverage/ \;
 
       # Step 11: Upload Test Results
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
         with:
           name: test-results
-          path: artifacts/test-results/
+          path: TestResults
 
-      # Step 12: Upload Code Coverage
-      - name: Upload Code Coverage
-        uses: actions/upload-artifact@v3
-        with:
-          name: code-coverage
-          path: artifacts/code-coverage/
+      # # Step 12: Upload Code Coverage
+      # - name: Upload Code Coverage
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: code-coverage
+      #     path: TestResults/
 
       # Step 5: Generate Coverage Report (HTML)
       # - name: Generate Coverage Report
