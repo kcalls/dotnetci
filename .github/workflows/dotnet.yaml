@@ -128,7 +128,7 @@ jobs:
         if: env.sln_exists == 'true'
         run: |
           dotnet test ${{ inputs.solution_path }} -c ${{ inputs.build_configuration }} \
-          --collect:"XPlat Code Coverage" \
+          /p:CollectCoverage=true \
           /p:CoverletOutput=TestResults/coverage.opencover.xml \
           /p:CoverletOutputFormat=opencover \
           --logger "trx;LogFileName=TestResults/test_results.trx"
