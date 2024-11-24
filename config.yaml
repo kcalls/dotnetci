@@ -1,0 +1,21 @@
+application:
+  APP_ID: 5399
+  Environment: NONPROD
+  name: "DR-POC"
+  account-id: "1234567890"
+  owner: "test name"
+  contact: "test.name@testname.com"
+  description: "test run"
+
+failover_tasks:
+  - Task: 1
+    Type: "invoke-lambda"
+    description: "Invoke Lambda function"
+    resource: "arn:aws:lambda:us-east-1:1234567890:function:APP-5399-data-import"
+    payload: '{"name":"bob", "age":"30"}'
+
+  - Task: 2
+    Type: "invoke-step-function"
+    description: "start step function execution"
+    resource: "arn:aws:states:us-east-1:1234567890:stateMachine:testdataprocessing"
+    payload: '{"name":"bob", "age":"30"}'

@@ -1,0 +1,16 @@
+name: step function workflow
+
+on:
+  workflow_call:
+    inputs:
+        resource:
+            type: string
+        payload:
+            type: string
+
+jobs:
+  lambda:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke Step function
+        run: echo "step function is Invoked."

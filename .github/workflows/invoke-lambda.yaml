@@ -1,0 +1,16 @@
+name: lambda workflow
+
+on:
+    workflow_call:
+      inputs:
+          resource:
+              type: string
+          payload:
+              type: string
+
+jobs:
+  lambda:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke Lambda
+        run: echo "Lambda is Invoked."
