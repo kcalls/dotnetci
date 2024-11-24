@@ -8,6 +8,10 @@
           - main
         paths:
           - 'config.yaml'
+    
+    permissions:
+      contents: write
+      actions: write
 
     jobs:
       failover-tasks:
