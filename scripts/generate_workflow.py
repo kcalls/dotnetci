@@ -2,7 +2,6 @@ import yaml
 import os
 from jinja2 import Template
 from github import Github
-from github.GithubException import GithubException
 
 # GitHub repository and token (use GITHUB_TOKEN in CI/CD)
 REPO_NAME = os.getenv("GITHUB_REPOSITORY")  # e.g., "user/repo"
@@ -54,70 +53,70 @@ def write_workflow(content):
     with open(WORKFLOW_FILE, "w") as file:
         file.write(content)
 
-def create_branch_and_pr(file_path):
-    g = Github(GITHUB_TOKEN)
-    repo = g.get_repo(REPO_NAME)
-
-    with open(file_path, "r") as file:
-        content = file.read()
-    # Create a new branch
-    base_branch = "main"
-    new_branch = "update-dynamic-workflow"
-    ref = f"refs/heads/{new_branch}"
-    base_ref = repo.get_branch(base_branch)
-    repo.create_git_ref(ref=ref, sha=base_ref.commit.sha)
-
-    # Add or update the file
-    try:
-        file = repo.get_contents(file_path, ref=ref)
-        repo.update_file(
-            path=file.path,
-            message="Update dynamic workflow",
-            content=content,
-            sha=file.sha,
-            branch=new_branch,
-        )
-    except:
-        repo.create_file(
-            path=file_path,
-            message="Create dynamic workflow",
-            content=content,
-            branch=new_branch,
-        )
-
-    # Create a pull request
-    repo.create_pull(
-        title="Automated update of dynamic workflow",
-        body="This PR updates the dynamic workflow file.",
-        head=new_branch,
-        base=base_branch,
-    )
-
-
-# Commit and push to GitHub
-# def push_to_github(file_path):
+# def create_branch_and_pr(file_path):
 #     g = Github(GITHUB_TOKEN)
 #     repo = g.get_repo(REPO_NAME)
 
 #     with open(file_path, "r") as file:
 #         content = file.read()
+#     # Create a new branch
+#     base_branch = "main"
+#     new_branch = "update-dynamic-workflow"
+#     ref = f"refs/heads/{new_branch}"
+#     base_ref = repo.get_branch(base_branch)
+#     repo.create_git_ref(ref=ref, sha=base_ref.commit.sha)
 
+#     # Add or update the file
 #     try:
-#         workflow_file = repo.get_contents(WORKFLOW_FILE)
+#         file = repo.get_contents(file_path, ref=ref)
 #         repo.update_file(
-#             workflow_file.path,
-#             "Update dynamic workflow",
-#             content,
-#             workflow_file.sha,
-#             branch="main",
+#             path=file.path,
+#             message="Update dynamic workflow",
+#             content=content,
+#             sha=file.sha,
+#             branch=new_branch,
 #         )
-#     except Exception:
+#     except:
 #         repo.create_file(
-#             WORKFLOW_FILE,
-#             "Create dynamic workflow",
-#             content,
-#             branch="main",
+#             path=file_path,
+#             message="Create dynamic workflow",
+#             content=content,
+#             branch=new_branch,
 #         )
+
+#     # Create a pull request
+#     repo.create_pull(
+#         title="Automated update of dynamic workflow",
+#         body="This PR updates the dynamic workflow file.",
+#         head=new_branch,
+#         base=base_branch,
+#     )
+
+
+# Commit and push to GitHub
+def push_to_github(file_path):
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+
+    with open(file_path, "r") as file:
+        content = file.read()
+
+    try:
+        workflow_file = repo.get_contents(WORKFLOW_FILE)
+        repo.update_file(
+            workflow_file.path,
+            "Update dynamic workflow",
+            content,
+            workflow_file.sha,
+            branch="main",
+        )
+    except Exception:
+        repo.create_file(
+            WORKFLOW_FILE,
+            "Create dynamic workflow",
+            content,
+            branch="main",
+        )
 
 # Main function
 def main():
@@ -135,8 +134,8 @@ def main():
     write_workflow(workflow_content)
 
     # Step 5: Push to GitHub
-    # push_to_github(WORKFLOW_FILE)
-    create_branch_and_pr(WORKFLOW_FILE)
+    push_to_github(WORKFLOW_FILE)
+    # create_branch_and_pr(WORKFLOW_FILE)
 
 if __name__ == "__main__":
     main()
