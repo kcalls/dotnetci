@@ -1,0 +1,29 @@
+
+    name: Dynamic Workflow
+
+    on:
+      push:
+        branches:
+          - main
+
+    jobs:
+      failover-tasks:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v3
+
+    
+          - name: Run Task 1: Invoke Lambda function
+            uses: ./github/workflows/invoke-lambda.yaml
+            with:
+              resource: arn:aws:lambda:us-east-1:1234567890:function:APP-5399-data-import
+              payload: {"name":"bob", "age":"30"}
+    
+          - name: Run Task 2: start step function execution
+            uses: ./github/workflows/invoke-step-function.yaml
+            with:
+              resource: arn:aws:states:us-east-1:1234567890:stateMachine:testdataprocessing
+              payload: {"name":"bob", "age":"30"}
+    
+    
