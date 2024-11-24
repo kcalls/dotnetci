@@ -6,7 +6,7 @@ on:
 permissions:
   contents: write
   packages: write
-  
+
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -27,7 +27,6 @@ jobs:
           echo "Checking GITHUB_TOKEN permissions..."
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/collaborators
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user
           
       - name: Run script
         env:
