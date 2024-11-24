@@ -3,8 +3,9 @@ name: Generate Workflow
 on:
   workflow_dispatch:
 
-# permissions:
-#   contents: write
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   generate:
@@ -20,6 +21,12 @@ jobs:
 
       - name: Install dependencies
         run: pip install pyyaml jinja2 PyGithub
+
+      - name: Debug GITHUB_TOKEN Permissions
+        run: |
+          echo "Checking GITHUB_TOKEN permissions..."
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/collaborators
 
       - name: Run script
         env:
