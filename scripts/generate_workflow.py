@@ -28,6 +28,8 @@ def generate_workflow(config):
       push:
         branches:
           - main
+        paths:
+          - 'config.yaml'
 
     jobs:
       failover-tasks:
