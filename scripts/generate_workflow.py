@@ -37,7 +37,7 @@ def generate_workflow(config):
             uses: actions/checkout@v3
 
     {% for task in failover_tasks %}
-          - name: Run Task {{ task.Task }}: {{ task.description }}
+          - name: Run Task {{ task.Task }} - {{ task.description }}
             uses: ./github/workflows/{{ 'invoke-lambda.yaml' if task.Type == 'invoke-lambda' else 'invoke-step-function.yaml' }}
             with:
               resource: {{ task.resource }}
