@@ -6,8 +6,7 @@ on:
 permissions:
   contents: write
   packages: write
-  metadata: read
-
+  
 jobs:
   generate:
     runs-on: ubuntu-latest
