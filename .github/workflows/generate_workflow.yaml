@@ -3,10 +3,9 @@ name: Generate Workflow
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  packages: write
-  workflows: write
+# permissions:
+#   contents: write
+#   packages: write
 
 jobs:
   generate:
@@ -31,5 +30,5 @@ jobs:
           
       - name: Run script
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MYPAT }}
         run: python scripts/generate_workflow.py
