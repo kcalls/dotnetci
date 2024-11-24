@@ -25,6 +25,7 @@ def generate_workflow(config):
     name: Dynamic Workflow
 
     on:
+      workflow_dispatch:
       push:
         branches:
           - main
