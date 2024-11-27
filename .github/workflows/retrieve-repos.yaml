@@ -16,22 +16,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MYPAT }}
         run: |
-          # GraphQL query to fetch repositories the user contributed to
           QUERY=$(cat <<EOF
           {
             "query": "query {
-              viewer {
-                repositoriesContributedTo(first: 10) {
+              organization(login: \"kcalls\") {
+                repositories(first: 10) {
                   edges {
                     node {
                       name
                       description
-                      owner {
-                        login
-                      }
                       isPrivate
                       url
                       createdAt
+                      collaborators(first: 10) {
+                        edges {
+                          node {
+                            login
+                          }
+                        }
+                      }
                     }
                   }
                 }
