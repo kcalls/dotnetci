@@ -1,0 +1,58 @@
+name: Retrieve Repositories Contributed To
+
+on:
+  workflow_dispatch: # Trigger the workflow manually
+
+jobs:
+  fetch-repos:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up environment
+        run: |
+          echo "GITHUB_GRAPHQL_API=https://api.github.com/graphql" >> $GITHUB_ENV
+
+      - name: Query GitHub GraphQL API
+        env:
+          GITHUB_TOKEN: ${{ secrets.MYPAT }}
+        run: |
+          # GraphQL query to fetch repositories the user contributed to
+          QUERY=$(cat <<EOF
+          {
+            "query": "query {
+              viewer {
+                repositoriesContributedTo(first: 10) {
+                  edges {
+                    node {
+                      name
+                      description
+                      owner {
+                        login
+                      }
+                      isPrivate
+                      url
+                      createdAt
+                    }
+                  }
+                }
+              }
+            }"
+          }
+          EOF
+          )
+
+          # Execute the query using curl
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$QUERY" \
+            $GITHUB_GRAPHQL_API)
+
+          # Output the response
+          echo "GraphQL Response:"
+          echo $RESPONSE
+
+      - name: Save output for debugging
+        run: |
+          echo "$RESPONSE" > graphql_response.json
+          cat graphql_response.json
