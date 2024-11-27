@@ -16,8 +16,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MYPAT }}
         run: |
-          QUERY=$(cat <<EOF
-          {
+          # Prepare the query
+          QUERY='{
             "query": "query {
               organization(login: \"kcalls\") {
                 repositories(first: 10) {
@@ -40,9 +40,7 @@ jobs:
                 }
               }
             }"
-          }
-          EOF
-          )
+          }'
 
           # Execute the query using curl
           RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -51,7 +49,7 @@ jobs:
             -d "$QUERY" \
             $GITHUB_GRAPHQL_API)
 
-          # Output the response
+          # Validate and output the response
           echo "GraphQL Response:"
           echo $RESPONSE
 
